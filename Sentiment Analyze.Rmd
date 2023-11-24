@@ -1,0 +1,117 @@
+---
+title: "Text Mining- Sentiment Analyze"
+author: "Gizem Güleli"
+date: "2023-11-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# 1- Install and load the required packages:
+
+
+```{r Install packages ,include=FALSE,warning=FALSE, results=FALSE, message=FALSE}
+#install.packages(c("tidyverse", "tidytext", "tm", "slam", "textdata"))
+```
+
+```{r load packages ,include=FALSE,warning=FALSE, results=FALSE, message=FALSE}
+
+library(tidyverse)
+library(tidytext)
+library(tm)
+library(slam)
+library(textdata)
+```
+
+```{r  Load the AFINN lexicon for sentiment analysis}
+
+afinn <- get_sentiments("afinn")
+
+```
+
+
+# 2- Preparing data to analyze #############################
+
+```{r Read Dataset}
+tweets <- read_csv("tweets.csv")
+head(tweets)
+
+```
+
+```{r  Create a tidy text data frame}
+
+tidy_tweets <- tweets %>%
+  rowid_to_column("tweet_id") %>%
+  select(tweet_id, text) %>%
+  unnest_tokens(word, text)
+
+## View the first few rows
+head(tidy_tweets)
+
+```
+
+
+# 3- Performing Sentiment analyze ############################
+
+
+```{r Join the AFINN lexicon with the tidy text data }
+
+sentiment_scores <- tidy_tweets %>%
+  left_join(afinn, by = "word") %>%
+  group_by(tweet_id) 
+```
+
+```{r Summarize sentiment scores}
+
+sentiment_summary <- sentiment_scores %>%
+  summarise(sentiment_score = sum(value, na.rm = TRUE))
+
+# View the sentiment summary
+sentiment_summary
+```
+
+
+
+# 4- Visualization th results #############
+
+```{r}
+# Calculate percentage distribution
+sentiment_percentage <- prop.table(table(factor(sign(sentiment_summary$sentiment_score)))) * 100
+sentiment_percentage
+```
+
+
+
+```{r Create a bar plot of sentiment scores}
+
+ggplot(data.frame(sentiment = names(sentiment_percentage), percentage = as.numeric(sentiment_percentage)), 
+       aes(x = "", y = percentage, fill = sentiment)) +
+  geom_bar(stat = "identity", width = 1, color = "white") +
+  coord_polar(theta = "y") +
+  geom_text(aes(label = sprintf("%.2f%%", percentage)), position = position_stack(vjust = 0.5), color = "black") +
+  labs(title = "Sentiment Distribution",
+       fill = "Sentiment Category") +
+  scale_fill_manual(values = c("-1" = "red", "0" = "grey", "1" = "green")) +
+  theme_minimal() +
+  theme(axis.text = element_blank(),
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        plot.margin = unit(rep(-2, 4), "cm"))
+
+```
+
+
+
+
+We read the data set tweets.csv and make sentiment analyze by using AFINN lexicon that is most common used lexicon for R. 
+In the end we  categorized the sentiment scores into three groups : Negative, Neutral and Positive. We calculate the percentage share of those three groups and then made a pie chart to make clear vizulation.
+(negative =red, neutral =grey, and positive =green)
+
+According to results we can say that most of the tweets are neutral  with an approximately 46.42 %. About 32.375% of the tweets have a negative sentiment and negative tweets are more than a positives (21.20%). 
+
+It's important to note that these percentages are based on the sentiment scores calculated using the AFINN lexicon, and the categorization into negative, neutral, and positive is determined by the sign of the sentiment score
+
+
