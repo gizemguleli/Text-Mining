@@ -1,0 +1,94 @@
+---
+title: "Regular Expressions"
+author: "Gizem Güleli"
+date: "2023-10-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Actually we are familiar to regular expressions (RegEx) that are powerful tools for pattern matching and text manipulation. from Web Scrabing. Regular expressions can be used to extract specific information from HTML or other any text data.
+The exercises below demonstrate the application of RegEx in different scenarios.
+
+```{r}
+# Load the necessary packages
+library(tidyverse)
+library(stringr)
+```
+
+
+# 1. Exercise
+
+Vector of strings is given
+
+```{r}
+
+vector <- c("emoticon", ":)", "symbol", "$^$")
+writeLines((vector))
+
+
+# Use the function str_view() and find in vector: 
+# a) string of 3 characters with the letter o in the middle
+str_view(vector, '.o.')
+
+# b) expression "emoticon"
+str_view(vector, "^emoticon$")
+
+# c) expression ":)"
+str_view(vector, "^\\:\\)$")
+
+# d) expression "$^$"
+str_view(vector, "^\\$\\^\\$$")
+
+
+```
+
+
+# 2. Exercise ----
+
+ Corpus of 980 words is given stringr::words
+
+```{r}
+
+# Use the function str_view() and find in the corpus:
+# a) all words containing the expression "yes" (add the parameter match=T)
+str_view(stringr::words, "yes")
+
+# b) all words starting with "w"
+str_view(stringr::words, "^w")
+
+# c) all words ending with "x"
+str_view(stringr::words, "x$")
+
+```
+
+
+# 3. Exercise ----
+Corpus of 980 words is given stringr::words
+
+```{r}
+
+
+# Use the function str_view() and find in the corpus:
+# a) all words starting with a vowel
+str_view(stringr::words, '^[aeiouAEIOU]')
+
+# b) all words that start only with a consonant
+str_view(stringr::words, '^[^aeiouAEIOU]')
+
+# c) all words ending with "ing" or "ise"
+str_view(stringr::words, '(ing|ise)$')
+
+# d) all words ending with "ed" but not with "eed"
+str_view(stringr::words, '[^e]ed$')
+
+# -------------------------------------------------#
+```
+
+
+
+
+
+
