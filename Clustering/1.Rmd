@@ -1,0 +1,229 @@
+---
+title: "Clustering  for Text Files"
+author: "Gizem Güleli"
+date: "2023-10-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+####Bonus TASK 
+
+```{r Install and load packages ,warning=FALSE, results=FALSE, message=FALSE}
+
+#install.packages(c("tm", "slam", "cluster", "wordcloud"))
+
+
+# Load necessary libraries
+library(tm)
+library(slam)
+library(cluster)
+library(wordcloud)
+
+```
+
+
+```{r Read the text files}
+
+# Get the list of text files
+files <- list.files("text_files", pattern = "\\.txt", full.names = TRUE)
+
+# Read the content of each text file with explicit encoding
+documents <- sapply(files, function(file) {
+  lines <- readLines(file, warn = FALSE, encoding = "UTF-8")
+  iconv(lines, to = "UTF-8", sub = "byte")
+})
+
+```
+
+```{r Preprocessing on Data to analyze}
+
+# Create a corpus
+corpus <- Corpus(VectorSource(documents))
+
+# Cleaning
+corpus <- tm_map(corpus, removePunctuation)
+corpus <- tm_map(corpus, removeNumbers)
+corpus <- tm_map(corpus, content_transformer(tolower))
+corpus <- tm_map(corpus, removeWords, stopwords("english"))
+corpus <- tm_map(corpus, stripWhitespace)
+
+```
+```{r}
+
+# Create a document-term matrix
+dtm <- DocumentTermMatrix(corpus)
+
+# Convert the document-term matrix to a matrix
+dtm_matrix <- as.matrix(dtm)
+
+# compute distance between document vectors
+distance <- dist(dtm_matrix)
+
+
+```
+
+
+# Analyze the Dataset
+
+```{r - Hierarchical Clustering Method }
+
+set.seed(123)
+
+# Hierarchical clustering using Ward's method
+hc <- hclust(distance, method = "ward.D")
+
+# Cut the dendrogram to get clusters
+hclustering <- cutree(hc, 2)
+
+# Print the results
+
+cat("Hierarchical Clustering Results:\n")
+for (i in 1:2) {
+  cluster_files <- files[hclustering == i]
+  cat("Cluster", i, "files:\n")
+  for (file in cluster_files) {
+    cat(" -", file, "\n")
+  }
+  cat("\n")
+}
+
+
+```
+
+```{r K-means Clustering}
+
+set.seed(123)
+
+# K-means clustering
+kclustering <- kmeans(distance, centers = 2, nstart = 100)
+
+# Print the results
+cat("\nK-means Clustering Results:\n")
+for (i in 1:2) {
+  cluster_files <- files[kclustering$cluster == i]
+  cat("Cluster", i, "files:\n")
+  for (file in cluster_files) {
+    cat(" -", file, "\n")
+  }
+  cat("\n")
+}
+
+
+```
+
+```{r}
+# Install and load the required libraries
+install.packages(c("ggplot2", "dplyr"))
+library(ggplot2)
+library(dplyr)
+
+# Read the content of each text file with explicit encoding
+documents <- lapply(files, function(file) {
+  lines <- readLines(file, warn = FALSE, encoding = "UTF-8")
+  iconv(lines, to = "UTF-8", sub = "byte")
+})
+
+# Create a dataframe with file names and hierarchical clustering results
+hierarchical_df <- data.frame(File = files, Cluster = cutree(hc, 2))
+
+# Create a dataframe with file names and k-means clustering results
+kmeans_df <- data.frame(File = files, Cluster = kclustering$cluster)
+
+# Merge the two dataframes on the "File" column
+combined_df <- merge(hierarchical_df, kmeans_df, by = "File", all = TRUE)
+
+# Print the combined dataframe
+cat("Combined Clustering Results:\n")
+print(combined_df)
+
+```
+I create the data.frame with result to make better comparison. However i recognized that both clustering method named the clusters oppositely. Thus i changed the numbers for k-means clustering.
+
+
+```{r}
+# Swap values in the "Cluster.y" column
+combined_df$Cluster.y <- ifelse(combined_df$Cluster.y == 1, 2, 1)
+
+# Print the updated combined dataframe
+cat("Updated Combined Clustering Results:\n")
+print(combined_df)
+```
+```{r}
+# Find rows where Cluster.x and Cluster.y do not match
+mismatched_rows <- combined_df[combined_df$Cluster.x != combined_df$Cluster.y, ]
+
+# Print the mismatched rows
+print(mismatched_rows)
+```
+The majority of files are clustered consistently between Hierarchical and KMeans Clustering. However five files (listed above ) are identified as mismatched between the Hierarchical Clustering and K-means Clustering results. 
+
+The mismatched files indicate differences in how the two clustering methods assigned these particular documents to clusters. The files may have characteristics that make them ambiguous or challenging for clustering algorithms to group consistently.
+
+```{r}
+
+# Print the counts for each cluster
+cat("\nCount of files in each cluster:\n")
+for (i in 1:2) {
+  cat("Cluster", i, "files in Hierarchical Clustering:", sum(combined_df$Cluster.x == i), "\n")
+  cat("Cluster", i, "files in KMeans Clustering:", sum(combined_df$Cluster.y == i), "\n\n")
+}
+
+
+```
+```{r}
+
+# Summary table of the top 5 words for each cluster
+
+p_words <- colSums(dtm_matrix) / sum(dtm_matrix)
+
+cluster_words <- lapply(unique(hclustering), function(x){
+  rows <- dtm_matrix[hclustering == x, ]
+  
+  # For memory's sake, drop all words that don't appear in the cluster
+  rows <- rows[, colSums(rows) > 0]
+  
+  colSums(rows) / sum(rows) - p_words[colnames(rows)]
+})
+
+cluster_summary <- data.frame(
+  cluster = unique(hclustering),
+  size = as.numeric(table(hclustering)),
+  top_words = sapply(cluster_words, function(d){
+    paste(
+      names(d)[order(d, decreasing = TRUE)][1:10], 
+      collapse = ", "
+    )
+  }),
+  stringsAsFactors = FALSE
+)
+
+print("Cluster Summary:")
+print(cluster_summary)
+
+# Wordcloud for each cluster
+for (i in unique(hclustering)) {
+  cat("Wordcloud for Cluster", i, ":\n")
+  wordcloud(
+    words = names(cluster_words[[i]]), 
+    freq = cluster_words[[i]], 
+    max.words = 10, 
+    rot.per = 0.2, 
+    colors = brewer.pal(6, "Dark2")
+  )
+  cat("\n")
+}
+
+```
+
+Cluster 1 is  Political Topics:
+
+Words like "will," "going," "people," and "country" suggest discussions about the future, the nation, and its people. Words like "want," "America," and "know" indicate expressions of desires, patriotism, and a quest for knowledge.
+
+Cluster 2 is about Business and Management:
+
+Words like "data," "example," and "management" indicate a focus on data and project management. Words like "however," "problem," and "point" suggest an emphasis on problem-solving and addressing challenges, possibly using specific tools or methods like "ibis."
+
+
