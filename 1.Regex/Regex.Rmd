@@ -1,0 +1,104 @@
+---
+title: "Regular Expressions"
+author: "Gizem Güleli"
+date: "2023-10-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+Regular expressions (RegEx) are powerful tools for pattern matching and text manipulation, especially in the context of web scraping. This document explores the application of RegEx in different scenarios.
+
+For those looking to enhance their skills and experience with regular expressions in a fun and engaging manner, I highly recommend Regex Crossword. It offers interactive puzzles that can significantly boost your RegEx proficiency.
+
+
+
+```{r,include=FALSE,warning=FALSE, results=FALSE, message=FALSE}
+# Load the necessary packages
+library(tidyverse)
+library(stringr)
+```
+
+
+# 1. Exercise
+
+A vector of strings is given, and we'll use the str_view() function to perform various RegEx operations
+
+```{r}
+
+vector <- c("emoticon", ":)", "symbol", "$^$")
+writeLines((vector))
+
+
+# Use the function str_view() and find in vector: 
+# a) string of 3 characters with the letter o in the middle
+str_view(vector, '.o.')
+
+# b) expression "emoticon"
+str_view(vector, "^emoticon$")
+
+# c) expression ":)"
+str_view(vector, "^\\:\\)$")
+
+# d) expression "$^$"
+str_view(vector, "^\\$\\^\\$$")
+
+
+```
+
+
+# 2. Exercise ----
+
+A corpus of 980 words is given (stringr::words), and we'll use str_view() to find words based on specific RegEx patterns.
+
+```{r}
+
+# Use the function str_view() and find in the corpus:
+# a) all words containing the expression "yes" (add the parameter match=T)
+str_view(stringr::words, "yes")
+
+# b) all words starting with "w"
+str_view(stringr::words, "^w")
+
+# c) all words ending with "x"
+str_view(stringr::words, "x$")
+
+```
+
+
+# 3. Exercise ----
+
+Another corpus of 980 words is given (stringr::words), and we'll use str_view() for more complex RegEx patterns.
+
+```{r}
+
+
+# Use the function str_view() and find in the corpus:
+# a) all words starting with a vowel
+str_view(stringr::words, '^[aeiouAEIOU]')
+
+# b) all words that start only with a consonant
+str_view(stringr::words, '^[^aeiouAEIOU]')
+
+# c) all words ending with "ing" or "ise"
+str_view(stringr::words, '(ing|ise)$')
+
+# d) all words ending with "ed" but not with "eed"
+str_view(stringr::words, '[^e]ed$')
+
+# -------------------------------------------------#
+```
+
+These exercises showcase the versatility of regular expressions in extracting specific patterns from text data, a crucial skill in data manipulation and analysis.
+
+By practicing these exercises and exploring resources like Regex Crossword, you'll gain a deeper understanding of regular expressions, enhancing your data manipulation and analysis capabilities.
+
+
+
+
+
+
