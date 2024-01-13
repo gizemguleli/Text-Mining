@@ -1,12 +1,14 @@
 ---
-title: "Analyzing Amazon Food Reviews: Unveiling Consumer Insights"
-author: "Gizem Güleli"
+title: 'Analyzing Amazon Food Reviews: Unveiling Consumer Insights'
+author: "Gizem Güleli & Mehmet Tiryaki"
 date: "2023-12-27"
-output: html_document
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
 ---
 
 ## Overview
-
 
 Delving into the intricate web of Amazon food reviews, we embarked on a journey to unravel customer sentiments, identify popular product categories, and uncover word associations that define the narrative. Our dataset, a co-purchasing network extracted from Amazon, comprised a staggering 262,111 nodes and 1,234,877 edges, offering a rich tapestry of interconnected insights.
 
@@ -51,20 +53,11 @@ The dataset represents an Amazon product co-purchasing network collected by craw
 
 ### Dataset Statistics:
 
-Nodes: 262,111
-Edges: 1,234,877
-Nodes in Largest Weakly Connected Component (WCC): 262,111 (100%)
-Edges in Largest WCC: 1,234,877 (100%)
-Nodes in Largest Strongly Connected Component (SCC): 241,761 (92.2%)
-Edges in Largest SCC: 1,131,217 (91.6%)
-Average Clustering Coefficient: 0.4198
-Number of Triangles: 717,719
-Fraction of Closed Triangles: 0.09339
-Diameter (Longest Shortest Path): 32
-90-Percentile Effective Diameter: 11
-
-Link : http://snap.stanford.edu/data/amazon0302.html
-
+Reviews from Oct 1999 - Oct 2012
+568,454 reviews
+256,059 users
+74,258 products
+260 users with > 50 reviews
 
 
 ```{r}
@@ -82,7 +75,7 @@ head(data)
 ### Data Cleaning and Preprocessing
 
 
-We performed data preprocessing and cleaning for a dataset. Initially, we focused on selecting relevant columns such as Id, ProductId, UserId, HelpfulnessNumerator, HelpfulnessDenominator, Score, Time, Summary, and Text while excluding any rows with missing values. This step ensured that we retained essential information for our analysis while maintaining data integrity.
+We performed data preprocessing and cleaning for a dataset. Initially, we focused on selecting relevant columns (non-user features) such as Id, ProductId, UserId, HelpfulnessNumerator, HelpfulnessDenominator, Score, Time, Summary, and Text while excluding any rows with missing values. This step ensured that we retained essential information for our analysis while maintaining data integrity.
 
 Subsequently, we prepared the text data within the reviews.df dataframe. Key transformations were applied to the Text column, including converting text to lowercase, removing unwanted characters such as newline characters (\\n), and eliminating specific patterns like HTML entities (&amp). Additionally, we addressed URLs by removing them along with hashtags and account mentions from the text.
 
@@ -97,7 +90,7 @@ Subsequently, the cleaned corpus was applied to the reviews.df dataframe, replac
 ```{r}
 #  Select non-user related data and Clean the missing data
 cleaned_data <- data %>%
-  select(Id, ProductId,UserId, HelpfulnessNumerator,HelpfulnessDenominator, Score, Time, Summary, Text) %>%
+  select(Id, ProductId, HelpfulnessNumerator,HelpfulnessDenominator, Score, Time, Summary, Text) %>%
   drop_na()  # Remove any rows with missing values
 
 ```
@@ -149,6 +142,7 @@ is.vector(out)
 
 
 ```
+
 ```{r}
 #replacing the original Text column with the processed version
 
@@ -158,9 +152,11 @@ reviews.df %<>% mutate(Text = out)
 
 ## Analyzing Word Frequency: What Words Echo Loudest?
 
-In this section, we delve into the textual content of the reviews to discern the most frequently occurring words. The initial step involves creating a word frequency table (word.count) that showcases the top words and their respective counts. However, during execution, a warning related to outer names for unnamed scalar atomic inputs might appear. Despite this warning, the results remain accurate.
+In this section, our focus shifts to the textual content of the reviews, aiming to identify the most frequently occurring words. The initial step involves creating a word frequency table (word_count) that highlights the top words and their respective counts. It's worth noting that, during execution, a warning about outer names for unnamed scalar atomic inputs might appear. Despite this warning, the results remain accurate.
 
-The presented output reveals the top 10 words and their frequencies in the Amazon product reviews dataset. Notably, the term "br" with 16305 occurrences raises a flag for further investigation, as  it might be an artifact or noise introduced during the text cleaning and tokenization process. Common positive descriptors such as "good," "great," and specific product-related terms like "coffee" dominate the list, emphasizing the positive sentiment and product-focused nature of the reviews. Understanding these prevalent words guides subsequent threshold-setting processes, ensuring the exclusion of noise and irrelevant terms for more meaningful analyses.
+Upon analyzing the output, the top 10 words and their frequencies in the Amazon product reviews dataset are revealed. Notably, the term "br" stands out with 16,305 occurrences, raising a red flag for further investigation. Upon careful examination, it was determined that "br" was an artifact or noise introduced during the text cleaning and tokenization process, originating from HTML line break elements ("<br />").
+
+To address this issue, we carefully inspected the data and identified the source of these occurrences. Given that <br /> is an HTML line break element, we recognized the need to remove it from our analysis. 
 
 
 ```{r}
@@ -176,6 +172,23 @@ word.count <- words.df %>% count(word, sort = TRUE)
 
 word.count %>% head(10)
 ```
+
+```{r}
+# Identify and remove <br /> occurrences
+words.df <- words.df %>%
+  filter(word != 'br')
+
+# Count word frequencies
+word.count <- words.df %>%
+  count(word, sort = TRUE)
+
+# Display the top 10 words
+word.count %>% head(10)
+
+```
+
+
+
 
 ### Visualization  of the most frequently occurring words 
 
@@ -206,8 +219,8 @@ plt %>% ggplotly()
 wordcloud(
   words = word.count$word, 
   freq = word.count$n, 
-  min.freq = 3800, 
-  colors = brewer.pal(8, 'Dark2')
+  min.freq = 3000, 
+  colors = brewer.pal(8, 'Dark2'),
 )
 ```
 
@@ -234,11 +247,12 @@ bi.gram.words <- reviews.df %>%
 
 bi.gram.words %>% 
   select(bigram) %>% 
-  head(10)
+  head()
 
 
 
 ```
+
 ```{r}
 
 # filter for stop words and remove white spaces
@@ -282,6 +296,7 @@ bi.gram.count %>%
 
 
 ```
+
 ```{r}
 
 # very skewed, for visualization purposes it might be a good idea to perform a transformation
@@ -385,7 +400,7 @@ forceNetwork(
 
 In this section, we extend our analysis by considering skipgrams, which allow for a "jump" in the word count. We extract skipgrams containing two words, count their occurrences, and visualize the resulting network. Similar to the bigram section, we apply a threshold to filter the network and focus on meaningful relationships. The dynamic plot is generated to highlight the most significant connections within the skipgram network, allowing for a more comprehensive exploration of word associations in the text data. The thresholds and parameters are chosen based on the outputs and the specific goals of the analysis.
 
-Analyzing the results, a medium threshold of 300 appears to strike a reasonable balance between the number of skip-grams retained and the average weight. With this threshold, the network includes 80 skip-grams with an average weight of 480.88. This choice aims to provide a meaningful representation of associations in the skip-grams, capturing a moderate level of connection strength while still being inclusive enough to offer insights into the data
+Analyzing the results, a medium threshold of 300 appears to strike a reasonable balance between the number of skip-grams retained and the average weight. With this threshold, the network includes 80 skip-grams with an average weight of 480,88. This choice aims to provide a meaningful representation of associations in the skip-grams, capturing a moderate level of connection strength while still being inclusive enough to offer insights into the data
 
 ```{r}
 # consider skipgrams, which allow a “jump” in the word count
@@ -532,7 +547,7 @@ forceNetwork(
 
 ### Compare the ngram results
 
-Comparing the results of the top 10 bigrams and skip-grams, we observe some similarities and differences. In both cases, there are expressions related to taste ("taste like," "peanut butter"), recommendations ("highly recommend," "really like"), and product experiences ("ive tried," "dog food"). However, there are unique combinations as well, such as "grocery store" in bigrams and "tastes like" in skip-grams.
+Comparing the results of the top 10 bigrams and skip-grams, we observe some similarities and differences. In both cases, there are expressions related to taste ("taste like"), recommendations ("highly recommend"), and product experiences ("ive tried", "much better","peanut butter",  "dog food"). However, there are unique combinations as well, such as "grocery store" , "dont know " in bigrams and "tastes like" , "really like" in skip-grams.
 
 The weights indicate the strength of association between the words. For instance, "taste like" has a higher weight in skip-grams (1156) compared to "highly recommend" (898) in bigrams, suggesting a potentially stronger connection between these words in the context of reviews.
 
@@ -548,7 +563,7 @@ skip.gram.count %>% head(10)
 
 ### Taste Dictates Trends
 
-Expressions related to taste ("taste like," "really good") echoed prominently across bigrams and skip-grams. The emphasis on sensory experiences underlines the pivotal role taste plays in shaping consumer perceptions.
+Expressions related to taste ("taste like," "really like") echoed prominently across bigrams and skip-grams. The emphasis on sensory experiences underlines the pivotal role taste plays in shaping consumer perceptions.
 
 ### Recommendations Echo Loudly
 
@@ -556,9 +571,9 @@ Expressions related to taste ("taste like," "really good") echoed prominently ac
 
 ### Product-Specific Conversations
 
-Distinctive product references like "dog food" and "grocery store" surfaced, indicating specific product categories driving conversations. Understanding these nuances is crucial for businesses aiming to align with consumer preferences.
+Distinctive product references like "peanut butter" , "dog food" and "grocery store" surfaced, indicating specific product categories driving conversations. Understanding these nuances is crucial for businesses aiming to align with consumer preferences.
 
-
+ 
 ## In Closing
 
 Our exploration into the Amazon food reviews goes beyond the surface of individual words, revealing a intricate mosaic of consumer sentiments and preferences. Whether it's the flavor-centric vocabulary or the reverberation of recommendations, each word contributes to a narrative woven intricately in the vast tapestry of Amazon's food reviews. As businesses traverse this linguistic landscape, these insights act as a guiding compass, providing a profound understanding of their customers. In the orchestration of reviews, every word assumes a pivotal role, and our analysis aims to decode the harmonious melody embedded within.
@@ -566,5 +581,8 @@ Our exploration into the Amazon food reviews goes beyond the surface of individu
 ## REFERENCES
 
 J. Leskovec, L. Adamic, and B. Adamic. The Dynamics of Viral Marketing. ACM Transactions on the Web (ACM TWEB), 1(1), 2007.
+http://snap.stanford.edu/data/amazon0302.html
+J. McAuley and J. Leskovec. From amateurs to connoisseurs: modeling the evolution of user expertise through online reviews. WWW, 2013.
+https://www.kaggle.com/datasets/snap/amazon-fine-food-reviews
 
 
